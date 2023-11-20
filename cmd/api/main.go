@@ -1,6 +1,6 @@
 package main
 
-import "visa-hunter/cmd/db"
+import "visa-hunter/internal/db"
 
 type Company struct {
 	ID         int
