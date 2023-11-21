@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -21,6 +22,8 @@ func main() {
 
 	http.HandleFunc("/index", handleIndexPage)
 
+	http.HandleFunc("/search", handleSearchPage)
+
 	log.Print(http.ListenAndServe(":8080", nil))
 }
 
@@ -28,21 +31,16 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	db := database.MustConnectDB()
 	defer db.Close()
 
-	pageqp := r.URL.Query().Get("page")
-	pagenum, err := strconv.Atoi(pageqp)
-	if err != nil {
-		log.Println("page number absent or invalid, returning page zero")
-		pagenum = 0
-	}
+	tmpl := template.Must(template.ParseGlob("views/index.html"))
 
-	tmpl := template.Must(template.ParseFiles("views/index.html"))
-
-	cmpData, err := database.GetFiltered(db, map[string]string{}, 48, pagenum*48)
+	cmpData, err := database.GetFiltered(db, map[string]string{}, 48, 0)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	tmpl.Execute(w, ResponsePage{Data: cmpData, Page: pagenum, Next: pagenum + 1})
+	fmt.Printf("tmpl.DefinedTemplates(): %v\n", tmpl.DefinedTemplates())
+
+	tmpl.ExecuteTemplate(w, "main", ResponsePage{Data: cmpData, Page: 0, Next: 1})
 }
 
 func handleIndexPage(w http.ResponseWriter, r *http.Request) {
@@ -63,5 +61,38 @@ func handleIndexPage(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	tmpl.ExecuteTemplate(w, "results", ResponsePage{Data: cmpData, Page: pagenum, Next: pagenum + 1})
+	tmpl.ExecuteTemplate(w, "index", ResponsePage{Data: cmpData, Page: pagenum, Next: pagenum + 1})
+}
+
+func handleSearchPage(w http.ResponseWriter, r *http.Request) {
+	db := database.MustConnectDB()
+	defer db.Close()
+
+	pageqp := r.URL.Query().Get("page")
+	pagenum, err := strconv.Atoi(pageqp)
+	if err != nil {
+		pagenum = 0
+	}
+
+	if err := r.ParseForm(); err != nil {
+		log.Fatal(err)
+	}
+
+	var params map[string]string
+	for k, v := range r.Form {
+		log.Println(k, v)
+	}
+
+	tmpl := template.Must(template.ParseFiles("views/index.html"))
+
+	cmpData, err := database.GetFiltered(db, params, 48, pagenum*48)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tmpl.ExecuteTemplate(w, "query", ResponsePage{
+		Data: cmpData,
+		Page: pagenum,
+		Next: pagenum + 1,
+	})
 }
