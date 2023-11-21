@@ -11,5 +11,39 @@
     ></script>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body></body>
+  <body>
+    {{block "results" .}}
+    <div id="results-block">
+      <div class="grid grid-cols-3 max-w-7xl gap-4" id="results-grid">
+        {{range .}}
+        <div
+          class="bg-slate-100 flex flex-col p-4 rounded-lg justify-between min-w-fit max-w-lg gap-2"
+          data-org-id="{{.ID}}"
+        >
+          <h1 class="text-2xl font-bold">{{.Name}}</h1>
+          <div
+            class="flex flex-col gap-2 justify-start items-start p-2 bg-slate-200 text-start rounded-md whitespace-nowrap"
+          >
+            <div>
+              {{.City}}
+              <wbr />
+              {{.County}}
+            </div>
+            <div>{{.TypeRating}}</div>
+            <div>{{.Route}}</div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+      <div
+        hx-target="#results-block"
+        hx-swap="beforeend"
+        hx-trigger="revealed"
+        hx-get="/index?page=2"
+      >
+        Page Break
+      </div>
+    </div>
+    {{end}}
+  </body>
 </html>

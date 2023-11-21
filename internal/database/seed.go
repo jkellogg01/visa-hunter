@@ -1,4 +1,4 @@
-package db
+package database
 
 import (
 	"database/sql"
@@ -11,7 +11,12 @@ func SeedDB() {
 	db := MustConnectDB()
 	defer db.Close()
 
-	file, err := os.Open("db/data.csv")
+	// err := initTable(db)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	file, err := os.Open("internal/database/data.csv")
 	if err != nil {
 		log.Fatal("error opening file: ", err)
 	}
@@ -51,4 +56,31 @@ func addCompany(db *sql.DB, org_name string, city string, county string, job_typ
 
 	log.Printf("addCompany completed affecting %d row(s)", rows)
 	return err
+}
+
+func initTable(db *sql.DB) error {
+	_, err := db.Exec("DROP TABLE IF EXISTS companies")
+	if err != nil {
+		return err
+	}
+
+	log.Println("Cleared DB")
+
+	_, err = db.Exec(`
+		CREATE TABLE companies (
+			org_id int AUTO INCREMENT,
+			org_name varchar(255) NOT NULL,
+			city varchar(255),
+			county varchar(255),
+			job_type_rating varchar(255),
+			primary key (org_id)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Initialized DB")
+
+	return nil
 }

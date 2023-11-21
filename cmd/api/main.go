@@ -1,64 +1,61 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
+	"html/template"
 	"log"
-	"strings"
-	"visa-hunter/internal/db"
+	"net/http"
+	"strconv"
+	"visa-hunter/internal/database"
 )
 
-type Company struct {
-	ID         int
-	Name       string
-	City       string
-	County     string
-	TypeRating string
-	Route      string
+func main() {
+	// database.SeedDB()
+
+	http.HandleFunc("/", handleIndex)
+
+	http.HandleFunc("/index", handleIndexPage)
+
+	log.Print(http.ListenAndServe(":8080", nil))
 }
 
-func main() {
-	db := db.MustConnectDB()
+func handleIndex(w http.ResponseWriter, r *http.Request) {
+	db := database.MustConnectDB()
 	defer db.Close()
 
-	jobs, err := getFiltered(db, map[string]string{
-		"city": "london",
-	}, 10, 0)
+	pageqp := r.URL.Query().Get("page")
+	pagenum, err := strconv.Atoi(pageqp)
+	if err != nil {
+		log.Println("page number absent or invalid, returning page zero")
+		pagenum = 0
+	}
+
+	tmpl := template.Must(template.ParseFiles("views/index.html"))
+
+	data, err := database.GetFiltered(db, map[string]string{}, 48, pagenum*48)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for line, comp := range jobs {
-		fmt.Println(line, comp)
-	}
+	tmpl.Execute(w, data)
 }
 
-func getFiltered(db *sql.DB, params map[string]string, size int, page int) ([]Company, error) {
-	var companies []Company
+func handleIndexPage(w http.ResponseWriter, r *http.Request) {
+	db := database.MustConnectDB()
+	defer db.Close()
 
-	var where strings.Builder
-	if len(params) > 0 {
-		where.WriteString("WHERE ")
-	}
-	for k, v := range params {
-		where.WriteString(fmt.Sprintf("%s LIKE '%%%s%%'", k, v))
-	}
-	// log.Println(where.String())
-
-	query := fmt.Sprintf("SELECT * FROM companies %s LIMIT %d, %d", where.String(), page*size, size)
-
-	rows, err := db.Query(query)
+	pageqp := r.URL.Query().Get("page")
+	pagenum, err := strconv.Atoi(pageqp)
 	if err != nil {
-		return nil, err
+		log.Println("Invalid page number, returning page zero")
+		pagenum = 0
 	}
 
-	for rows.Next() {
-		var comp Company
-		if err := rows.Scan(&comp.ID, &comp.Name, &comp.City, &comp.County, &comp.TypeRating, &comp.Route); err != nil {
-			return nil, err
-		}
-		companies = append(companies, comp)
+	tmpl := template.Must(template.ParseFiles("views/index.html"))
+
+	data, err := database.GetFiltered(db, map[string]string{}, 48, pagenum*48)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	return companies, nil
+	tmpl.ExecuteTemplate(w, "results", data)
 }
