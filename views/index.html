@@ -15,7 +15,7 @@
     {{block "results" .}}
     <div id="results-block">
       <div class="grid grid-cols-3 max-w-7xl gap-4" id="results-grid">
-        {{range .}}
+        {{range .Data}}
         <div
           class="bg-slate-100 flex flex-col p-4 rounded-lg justify-between min-w-fit max-w-lg gap-2"
           data-org-id="{{.ID}}"
@@ -39,7 +39,7 @@
         hx-target="#results-block"
         hx-swap="beforeend"
         hx-trigger="revealed"
-        hx-get="/index?page=2"
+        hx-get="/index?page={{.Next}}"
       >
         Page Break
       </div>

@@ -8,6 +8,12 @@ import (
 	"visa-hunter/internal/database"
 )
 
+type ResponsePage struct {
+	Data []database.Company
+	Page int
+	Next int
+}
+
 func main() {
 	// database.SeedDB()
 
@@ -31,12 +37,12 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	tmpl := template.Must(template.ParseFiles("views/index.html"))
 
-	data, err := database.GetFiltered(db, map[string]string{}, 48, pagenum*48)
+	cmpData, err := database.GetFiltered(db, map[string]string{}, 48, pagenum*48)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	tmpl.Execute(w, data)
+	tmpl.Execute(w, ResponsePage{Data: cmpData, Page: pagenum, Next: pagenum + 1})
 }
 
 func handleIndexPage(w http.ResponseWriter, r *http.Request) {
@@ -52,10 +58,10 @@ func handleIndexPage(w http.ResponseWriter, r *http.Request) {
 
 	tmpl := template.Must(template.ParseFiles("views/index.html"))
 
-	data, err := database.GetFiltered(db, map[string]string{}, 48, pagenum*48)
+	cmpData, err := database.GetFiltered(db, map[string]string{}, 48, pagenum*48)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	tmpl.ExecuteTemplate(w, "results", data)
+	tmpl.ExecuteTemplate(w, "results", ResponsePage{Data: cmpData, Page: pagenum, Next: pagenum + 1})
 }
