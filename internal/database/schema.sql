@@ -13,7 +13,7 @@ CREATE TABLE `organisation` (
 );
 
 CREATE TABLE `job` (
-  `id` integer PRIMARY KEY AUTO_INCREMENT,
+  `id` integer PRIMARY KEY,
   `type` varchar(255),
   `rating` varchar(255),
   `visa_route` varchar(255)

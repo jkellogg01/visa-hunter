@@ -1,15 +1,15 @@
 package database
 
 type Organisation struct {
-	ID     int
+	ID     int64
 	Name   string
 	City   string
 	County string
-	Jobs   []int
+	Jobs   []int64
 }
 
 type Job struct {
-	ID        int
+	ID        int64
 	Type      string
 	Rating    string
 	VisaRoute string

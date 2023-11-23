@@ -98,12 +98,40 @@ func SeedDB() {
 			log.Fatal(err)
 		}
 	}
+
+	for orgs.Len > 0 {
+		curr, err := orgs.Pop()
+		if err != nil {
+			log.Fatal("error fetching next organisation")
+		}
+
+		result, err := db.Exec(
+			`insert into organisation (name, city, county) values (?, ?, ?)`,
+			curr.Name, curr.City, curr.County,
+		)
+		if err != nil {
+			log.Fatal("error inserting organisation into table")
+		}
+
+		orgID, err := result.LastInsertId()
+		if err != nil {
+			log.Fatal("error fething ID for inserted organisation")
+		}
+		curr.ID = orgID
+
+		for _, jobID := range curr.Jobs {
+			db.Exec(
+				`insert into organisation_job (organisation_id, job_id) values (?, ?)`,
+				curr.ID, jobID,
+			)
+		}
+	}
 }
 
 func parseJobs(data [][]string) ([]*Job, error) {
 	jobs := []*Job{}
 
-	nextJobId := 0
+	var nextJobId int64 = 0
 	for _, row := range data {
 		ratingIdx := strings.Index(row[3], "(")
 		jobType := row[3][:ratingIdx]
@@ -141,7 +169,7 @@ func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
 			Name:   row[0],
 			City:   row[1],
 			County: row[2],
-			Jobs:   []int{},
+			Jobs:   []int64{},
 		}
 
 		if result.Len < 1 || result.Head.Val == curr {
@@ -158,12 +186,12 @@ func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
 		jobType := row[3][:ratingIdx]
 		jobRating := row[3][ratingIdx+1 : len(row[3])-1]
 		jobVisaRoute := row[4]
-		jobID := 0
+		var jobID int64 = 0
 		for _, job := range jobs {
 			if job.Type == jobType &&
 				job.Rating == jobRating &&
 				job.VisaRoute == jobVisaRoute {
-				jobID = jobID
+				jobID = job.ID
 				break
 			}
 		}
