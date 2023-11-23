@@ -59,6 +59,8 @@ func (q *Queue[T]) Peek() (*T, error) {
 	return q.Tail.Val, nil
 }
 
+// Would like to move some of the actual querying to the query files but
+// I have some other data structure things i would want to change first
 func SeedDB() {
 	db := MustConnectDB()
 	defer db.Close()
@@ -97,6 +99,7 @@ func SeedDB() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Println("inserted into job table:", job)
 	}
 
 	for orgs.Len > 0 {
@@ -118,12 +121,17 @@ func SeedDB() {
 			log.Fatal("error fething ID for inserted organisation")
 		}
 		curr.ID = orgID
+		log.Println("inserted into organisation table:", curr)
 
 		for _, jobID := range curr.Jobs {
-			db.Exec(
+			_, err := db.Exec(
 				`insert into organisation_job (organisation_id, job_id) values (?, ?)`,
 				curr.ID, jobID,
 			)
+			if err != nil {
+				log.Fatal("failed to insert through-table row")
+			}
+			log.Println("inserted into through-table:", curr.ID, jobID)
 		}
 	}
 }
