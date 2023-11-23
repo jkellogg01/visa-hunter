@@ -8,7 +8,22 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-func MustConnectDB() *sql.DB {
+type Organisation struct {
+	ID     int64
+	Name   string
+	City   string
+	County string
+	Jobs   []int64
+}
+
+type Job struct {
+	ID        int64
+	Type      string
+	Rating    string
+	VisaRoute string
+}
+
+func MustConnectDB() (*sql.DB, error) {
 	cfg := mysql.Config{
 		User:   os.Getenv("DB_USER"),
 		Passwd: os.Getenv("DB_PASS"),
@@ -19,13 +34,13 @@ func MustConnectDB() *sql.DB {
 
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	err = db.Ping()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	log.Println("db connection successful")
-	return db
+	return db, nil
 }

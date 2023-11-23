@@ -42,9 +42,12 @@ func (q *Queue[T]) Push(value *T) {
 }
 
 func (q *Queue[T]) Pop() (*T, error) {
-	if q.Len < 1 {
-		return nil, fmt.Errorf("no items to peek on queue")
+	if q.Len < 1 || q.Tail == nil {
+		q.Head = nil
+		q.Tail = nil
+		return nil, fmt.Errorf("no items to pop from queue")
 	}
+	q.Len--
 
 	result := q.Tail
 	q.Tail = q.Tail.Next
@@ -62,16 +65,19 @@ func (q *Queue[T]) Peek() (*T, error) {
 // Would like to move some of the actual querying to the query files but
 // I have some other data structure things i would want to change first
 func SeedDB() {
-	db := MustConnectDB()
+	db, err := MustConnectDB()
+	if err != nil {
+		log.Fatal("error connecting to db:", err)
+	}
 	defer db.Close()
 
 	file, err := os.Open("internal/database/data.csv")
 	if err != nil {
-		log.Fatal("error opening file: ", err)
+		log.Fatal("error opening file:", err)
 	}
 	data, err := csv.NewReader(file).ReadAll()
 	if err != nil {
-		log.Fatal("error reading file: ", err)
+		log.Fatal("error reading file:", err)
 	}
 
 	// "Organisation Name","Town/City","County","Type & Rating","Route"
@@ -83,12 +89,12 @@ func SeedDB() {
 
 	jobs, err := parseJobs(data)
 	if err != nil {
-		log.Fatal("failed to parse job data")
+		log.Fatal("failed to parse job data", err)
 	}
 
 	orgs, err := parseOrgs(data, jobs)
 	if err != nil {
-		log.Fatal("failed to parse organisation data")
+		log.Fatal("failed to parse organisation data", err)
 	}
 
 	for _, job := range jobs {
@@ -105,7 +111,8 @@ func SeedDB() {
 	for orgs.Len > 0 {
 		curr, err := orgs.Pop()
 		if err != nil {
-			log.Fatal("error fetching next organisation")
+			log.Fatal("tried to pop nil value from queue end: ", err)
+			break
 		}
 
 		result, err := db.Exec(
@@ -113,12 +120,12 @@ func SeedDB() {
 			curr.Name, curr.City, curr.County,
 		)
 		if err != nil {
-			log.Fatal("error inserting organisation into table")
+			log.Fatal("error inserting organisation into table", err)
 		}
 
 		orgID, err := result.LastInsertId()
 		if err != nil {
-			log.Fatal("error fething ID for inserted organisation")
+			log.Fatal("error fething ID for inserted organisation", err)
 		}
 		curr.ID = orgID
 		log.Println("inserted into organisation table:", curr)
@@ -129,7 +136,7 @@ func SeedDB() {
 				curr.ID, jobID,
 			)
 			if err != nil {
-				log.Fatal("failed to insert through-table row")
+				log.Fatal("failed to insert through-table row", err)
 			}
 			log.Println("inserted into through-table:", curr.ID, jobID)
 		}
@@ -139,31 +146,38 @@ func SeedDB() {
 func parseJobs(data [][]string) ([]*Job, error) {
 	jobs := []*Job{}
 
-	var nextJobId int64 = 0
-	for _, row := range data {
+	var nextJobId int64 = 1
+	for i, row := range data {
+		log.Println("evaluating row: ", row[3:])
+		if i == 0 {
+			continue
+		}
 		ratingIdx := strings.Index(row[3], "(")
 		jobType := row[3][:ratingIdx]
-		jobRating := row[3][ratingIdx+1 : len(row[3])-1]
+		jobRating := row[3][ratingIdx:]
 		jobVisaRoute := row[4]
 		jobRedundant := false
 		for _, job := range jobs {
-			if job.Type == jobType ||
-				job.Rating == jobRating ||
+			if job.Type == jobType &&
+				job.Rating == jobRating &&
 				job.VisaRoute == jobVisaRoute {
 				jobRedundant = true
 				break
 			}
 		}
 		if jobRedundant {
+			// log.Println("job was redundant, did not insert")
 			continue
 		}
-		nextJobId++
+
 		jobs = append(jobs, &Job{
 			ID:        nextJobId,
 			Type:      jobType,
 			Rating:    jobRating,
 			VisaRoute: jobVisaRoute,
 		})
+		nextJobId++
+		log.Println("inserted job: ", row[3:])
 	}
 
 	return jobs, nil
@@ -172,7 +186,11 @@ func parseJobs(data [][]string) ([]*Job, error) {
 func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
 	result := newOrgQueue()
 
-	for _, row := range data {
+	for i, row := range data {
+		if i == 0 {
+			continue
+		}
+
 		curr := &Organisation{
 			Name:   row[0],
 			City:   row[1],
@@ -180,7 +198,7 @@ func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
 			Jobs:   []int64{},
 		}
 
-		if result.Len < 1 || result.Head.Val == curr {
+		if result.Len < 1 || result.Head.Val.Name != curr.Name {
 			result.Push(curr)
 		} else {
 			curr = result.Head.Val
@@ -192,10 +210,11 @@ func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
 		// array of job IDs
 		ratingIdx := strings.Index(row[3], "(")
 		jobType := row[3][:ratingIdx]
-		jobRating := row[3][ratingIdx+1 : len(row[3])-1]
+		jobRating := row[3][ratingIdx:]
 		jobVisaRoute := row[4]
 		var jobID int64 = 0
 		for _, job := range jobs {
+			log.Println(job, row[3:])
 			if job.Type == jobType &&
 				job.Rating == jobRating &&
 				job.VisaRoute == jobVisaRoute {
@@ -205,10 +224,21 @@ func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
 		}
 		if jobID == 0 {
 			return nil, fmt.Errorf("failed to find current job (skill issue)")
+		} else if contains(curr.Jobs, jobID) {
+			continue
 		}
-
 		curr.Jobs = append(curr.Jobs, jobID)
+		log.Println("current job in org: ", curr)
 	}
 
 	return result, nil
+}
+
+func contains(haystack []int64, needle int64) bool {
+	for _, value := range haystack {
+		if needle == value {
+			return true
+		}
+	}
+	return false
 }
