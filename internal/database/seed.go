@@ -5,52 +5,54 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 )
 
-type OrgNode struct {
-	Val  *Organisation
-	Next *OrgNode
+type Node[T any] struct {
+	Val  *T
+	Next *Node[T]
 }
 
-type OrgQueue struct {
+type Queue[T any] struct {
 	Len  int
-	Head *OrgNode
-	Tail *OrgNode
+	Head *Node[T]
+	Tail *Node[T]
 }
 
-func New() *OrgQueue {
-	return &OrgQueue{
+func newOrgQueue() *Queue[Organisation] {
+	return &Queue[Organisation]{
 		Len:  0,
 		Head: nil,
 		Tail: nil,
 	}
 }
 
-func (q *OrgQueue) Push(org *Organisation) {
-	node := &OrgNode{Val: org, Next: nil}
+func (q *Queue[T]) Push(value *T) {
+	node := &Node[T]{Val: value, Next: nil}
 	q.Len++
+
 	if q.Len <= 1 {
 		q.Head = node
 		q.Tail = node
 		return
 	}
+
 	q.Head.Next = node
 	q.Head = node
-	return
 }
 
-func (q *OrgQueue) Pop() (*Organisation, error) {
+func (q *Queue[T]) Pop() (*T, error) {
 	if q.Len < 1 {
-		return nil, fmt.Errorf("no items to pop from queue")
+		return nil, fmt.Errorf("no items to peek on queue")
 	}
-	q.Len--
+
 	result := q.Tail
-	q.Tail = result.Next
+	q.Tail = q.Tail.Next
 	result.Next = nil
 	return result.Val, nil
 }
 
-func (q *OrgQueue) Peek() (*Organisation, error) {
+func (q *Queue[T]) Peek() (*T, error) {
 	if q.Len < 1 {
 		return nil, fmt.Errorf("no items to peek on queue")
 	}
@@ -76,5 +78,32 @@ func SeedDB() {
 	// 2 -> Organisation.County
 	// 3 (SPLIT)-> Job.Type, Job.Rating
 	// 4 -> Job.VisaRoute
+	orgs := NewOrgQueue()
+	for _, row := range data {
+		currOrg := &Organisation{
+			Name:   row[0],
+			City:   row[1],
+			County: row[2],
+			Jobs:   []*Job{},
+		}
+		if orgs.Len < 1 || orgs.Head.Val != currOrg {
+			orgs.Push(currOrg)
+		}
+		ratIdx := strings.Index(row[3], "(")
+		jobType := row[3][:ratIdx]
+		jobRating := row[3][ratIdx:]
+		currJob := &Job{
+			Type:      jobType,
+			Rating:    jobRating,
+			VisaRoute: row[4],
+		}
+		orgs.Head.Val.Jobs = append(orgs.Head.Val.Jobs, currJob)
+	}
 
+	for {
+		if orgs.Tail == nil {
+			break
+		}
+
+	}
 }

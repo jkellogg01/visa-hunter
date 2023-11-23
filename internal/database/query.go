@@ -5,7 +5,7 @@ type Organisation struct {
 	Name   string
 	City   string
 	County string
-	Jobs   []Job
+	Jobs   []int
 }
 
 type Job struct {
