@@ -78,32 +78,101 @@ func SeedDB() {
 	// 2 -> Organisation.County
 	// 3 (SPLIT)-> Job.Type, Job.Rating
 	// 4 -> Job.VisaRoute
-	orgs := NewOrgQueue()
+
+	jobs, err := parseJobs(data)
+	if err != nil {
+		log.Fatal("failed to parse job data")
+	}
+
+	orgs, err := parseOrgs(data, jobs)
+	if err != nil {
+		log.Fatal("failed to parse organisation data")
+	}
+
+	for _, job := range jobs {
+		_, err := db.Exec(
+			`insert into job (id, type, rating, visa_route) values (?, ?, ?, ?)`,
+			job.ID, job.Type, job.Rating, job.VisaRoute,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func parseJobs(data [][]string) ([]*Job, error) {
+	jobs := []*Job{}
+
+	nextJobId := 0
 	for _, row := range data {
-		currOrg := &Organisation{
+		ratingIdx := strings.Index(row[3], "(")
+		jobType := row[3][:ratingIdx]
+		jobRating := row[3][ratingIdx+1 : len(row[3])-1]
+		jobVisaRoute := row[4]
+		jobRedundant := false
+		for _, job := range jobs {
+			if job.Type == jobType ||
+				job.Rating == jobRating ||
+				job.VisaRoute == jobVisaRoute {
+				jobRedundant = true
+				break
+			}
+		}
+		if jobRedundant {
+			continue
+		}
+		nextJobId++
+		jobs = append(jobs, &Job{
+			ID:        nextJobId,
+			Type:      jobType,
+			Rating:    jobRating,
+			VisaRoute: jobVisaRoute,
+		})
+	}
+
+	return jobs, nil
+}
+
+func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
+	result := newOrgQueue()
+
+	for _, row := range data {
+		curr := &Organisation{
 			Name:   row[0],
 			City:   row[1],
 			County: row[2],
-			Jobs:   []*Job{},
-		}
-		if orgs.Len < 1 || orgs.Head.Val != currOrg {
-			orgs.Push(currOrg)
-		}
-		ratIdx := strings.Index(row[3], "(")
-		jobType := row[3][:ratIdx]
-		jobRating := row[3][ratIdx:]
-		currJob := &Job{
-			Type:      jobType,
-			Rating:    jobRating,
-			VisaRoute: row[4],
-		}
-		orgs.Head.Val.Jobs = append(orgs.Head.Val.Jobs, currJob)
-	}
-
-	for {
-		if orgs.Tail == nil {
-			break
+			Jobs:   []int{},
 		}
 
+		if result.Len < 1 || result.Head.Val == curr {
+			result.Push(curr)
+		} else {
+			curr = result.Head.Val
+		}
+
+		// TODO: make this way more readable (extract function?)
+		// This finds the job for the current row in the "jobs" slice
+		// and pulls out the ID to append it to the current company's
+		// array of job IDs
+		ratingIdx := strings.Index(row[3], "(")
+		jobType := row[3][:ratingIdx]
+		jobRating := row[3][ratingIdx+1 : len(row[3])-1]
+		jobVisaRoute := row[4]
+		jobID := 0
+		for _, job := range jobs {
+			if job.Type == jobType &&
+				job.Rating == jobRating &&
+				job.VisaRoute == jobVisaRoute {
+				jobID = jobID
+				break
+			}
+		}
+		if jobID == 0 {
+			return nil, fmt.Errorf("failed to find current job (skill issue)")
+		}
+
+		curr.Jobs = append(curr.Jobs, jobID)
 	}
+
+	return result, nil
 }
