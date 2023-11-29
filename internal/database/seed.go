@@ -65,7 +65,7 @@ func (q *Queue[T]) Peek() (*T, error) {
 // Would like to move some of the actual querying to the query files but
 // I have some other data structure things i would want to change first
 func SeedDB() {
-	db, err := MustConnectDB()
+	db, err := ConnectDB()
 	if err != nil {
 		log.Fatal("error connecting to db:", err)
 	}

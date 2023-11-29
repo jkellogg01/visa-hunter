@@ -23,7 +23,7 @@ type Job struct {
 	VisaRoute string
 }
 
-func MustConnectDB() (*sql.DB, error) {
+func ConnectDB() (*sql.DB, error) {
 	cfg := mysql.Config{
 		User:   os.Getenv("DB_USER"),
 		Passwd: os.Getenv("DB_PASS"),
