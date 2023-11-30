@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"visa-hunter/internal/database"
 )
 
@@ -44,6 +45,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 
 	tmpls, err := template.ParseGlob("./views/**/*.html")
 	if err != nil {
@@ -111,6 +113,7 @@ func handleIndexPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 
 	tmpls, err := template.ParseGlob("./views/**/*.html")
 	if err != nil {
@@ -187,7 +190,90 @@ func handleIndexPage(w http.ResponseWriter, r *http.Request) {
 // }
 
 func handleOrgDetail(w http.ResponseWriter, r *http.Request) {
+	db, err := database.ConnectDB()
+	if err != nil {
+		log.Fatal("Failed to connect to db: ", err)
+	}
+	defer db.Close()
 
+	var detail struct {
+		ID     int64
+		Name   string
+		City   string
+		County string
+		Jobs   []struct {
+			Type      string
+			Rating    string
+			VisaRoute string
+		}
+	}
+
+	orgID, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		log.Fatal("atoi error: ", err)
+	}
+	detail.ID = int64(orgID)
+
+	wg := new(sync.WaitGroup)
+
+	wg.Add(1)
+	go func() {
+		row := db.QueryRow(`
+		SELECT name, city, county FROM organisation WHERE id = ?
+		`, detail.ID)
+
+		err := row.Scan(&detail.Name, &detail.City, &detail.County)
+		if err != nil {
+			log.Fatal()
+		}
+
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		rows, err := db.Query(`
+		SELECT
+			type, 
+			rating, 
+			visa_route
+		FROM
+			job
+		WHERE
+			id in(
+			select job_id from organisation_job where organisation_id = ?
+			)
+		`, detail.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for rows.Next() {
+			var job struct {
+				Type      string
+				Rating    string
+				VisaRoute string
+			}
+			if err := rows.Scan(
+				&job.Type,
+				&job.Rating,
+				&job.VisaRoute,
+			); err != nil {
+				log.Fatal(err)
+			}
+			detail.Jobs = append(detail.Jobs, job)
+		}
+
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	tmpls, err := template.ParseGlob("./views/**/*.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmpls.ExecuteTemplate(w, "job-card-full.html", detail)
 }
 
 func handleSeed(w http.ResponseWriter, r *http.Request) {
