@@ -17,25 +17,28 @@
         <!-- <div id="search-box" class="bg-slate-100 p-4 rounded-lg">
           Hello this is the search bar!
         </div> -->
-        {{block "companies" .}}
+
         <div class="grid grid-cols-3 gap-4 max-w-7xl" id="results-display">
-          {{range .Data}} {{block "job-card-minimized" .}}
+          {{block "companies" .}} {{range .Data}}
           <div
             class="p-4 bg-slate-100 rounded-lg flex flex-row gap-2 justify-between"
-            data-job-id="{{.ID}}"
+            id="job-{{.ID}}"
           >
             <div>
               <h2 class="text-xl font-semibold">{{.Name}}</h2>
-              <!-- Add logic to rewrite this string before sending it to template -->
+              <!-- TODO: Add logic to rewrite this string before sending it to template -->
               <p>{{.City}}, {{.County}}</p>
             </div>
             <div
               class="p-4 bg-slate-200 rounded-md text-2xl font-bold cursor-pointer hover:bg-slate-300"
+              hx-get="/organisation?id={{.ID}}"
+              hx-target="#job-{{.ID}}"
+              hx-swap="outerHTML"
             >
               {{.Jobs}}
             </div>
           </div>
-          {{end}} {{else}}
+          {{else}}
           <p class="p-4 bg-slate-100 rounded-lg">
             No jobs found for these conditions
           </p>
@@ -43,14 +46,14 @@
           <div
             id="next-page"
             class="h-1 col-span-3"
-            data-cursor="{{.Cursor}}"
+            hx-get="/organisations?cursor={{.Cursor}}"
             hx-trigger="revealed"
-            hx-target="results-display"
+            hx-target="#results-display"
             hx-swap="beforeend"
           ></div>
+          {{end}}
           <!-- This will trigger the infinite scrolling! -->
         </div>
-        {{end}}
       </div>
       <footer class="w-full text-center bg-slate-100 p-4">
         <!-- footer stuff idk. I'm not into footer stuff -->

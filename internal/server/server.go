@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"visa-hunter/internal/database"
 )
 
@@ -19,6 +20,9 @@ type ResultPage struct {
 }
 
 func Start(port string) error {
+	favicon := http.FileServer(http.Dir("./public/favicon.ico"))
+	http.Handle("/favicon.ico", favicon)
+
 	http.HandleFunc("/", handleIndex)
 	// http.HandleFunc("/search", handleSearch)
 
@@ -26,7 +30,7 @@ func Start(port string) error {
 	http.HandleFunc("/organisations", handleIndexPage)
 	// http.HandleFunc("/search/:cursor", handleSearchPage)
 
-	http.HandleFunc("/organisation/:id", handleOrgDetail)
+	http.HandleFunc("/organisation", handleOrgDetail)
 
 	http.HandleFunc("/seed", handleSeed)
 
@@ -34,6 +38,8 @@ func Start(port string) error {
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.Method, r.URL)
+
 	db, err := database.ConnectDB()
 	if err != nil {
 		log.Fatal(err)
@@ -43,7 +49,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(tmpls.DefinedTemplates())
+	// log.Println(tmpls.DefinedTemplates())
 
 	rows, err := db.Query(`
 	SELECT
@@ -95,13 +101,81 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		Cursor: results[len(results)-1].ID,
 	}
 
-	// Have to basically rewrite the front end bc of how I changed the data structure so I'll go change that and return to actually ship that data to the client
-
 	tmpls.ExecuteTemplate(w, "index.html", templateData)
 }
 
 func handleIndexPage(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.Method, r.URL)
 
+	db, err := database.ConnectDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tmpls, err := template.ParseGlob("./views/**/*.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// log.Println(tmpls.DefinedTemplates())
+
+	pageCursor, err := strconv.Atoi(r.URL.Query().Get("cursor"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err := db.Query(`
+	SELECT
+		organisation.*,
+		(
+			SELECT
+				COUNT(*)
+			FROM
+				organisation_job
+			WHERE
+				organisation_job.organisation_id = organisation.id) AS jobs
+		FROM
+			organisation
+		WHERE
+			organisation.id > ?
+		GROUP BY
+			organisation.id
+		LIMIT 48;
+	`, pageCursor)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var results []struct {
+		ID     int64
+		Name   string
+		City   string
+		County string
+		Jobs   int
+	}
+
+	for rows.Next() {
+		var row struct {
+			ID     int64
+			Name   string
+			City   string
+			County string
+			Jobs   int
+		}
+
+		err := rows.Scan(&row.ID, &row.Name, &row.City, &row.County, &row.Jobs)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		results = append(results, row)
+	}
+
+	templateData := ResultPage{
+		Data:   results,
+		Cursor: results[len(results)-1].ID,
+	}
+
+	tmpls.ExecuteTemplate(w, "companies", templateData)
 }
 
 // func handleSearch(w http.ResponseWriter, r *http.Request) {
