@@ -1,0 +1,23 @@
+<div
+  class="p-4 bg-slate-100 rounded-lg flex flex-col gap-2"
+  data-job-id="{{.ID}}"
+>
+  <div>
+    <h2 class="text-xl font-semibold">{{.Name}}</h2>
+    <p>{{.City}}, {{.County}}</p>
+  </div>
+  <table class="p-4 bg-slate-200 rounded-md">
+    <tr>
+      <th>Type</th>
+      <th>Rating</th>
+      <th>Visa Route</th>
+    </tr>
+    {{range .Jobs}}
+    <tr>
+      <td>{{.Type}}</td>
+      <td>{{.Rating}}</td>
+      <td>{{.VisaRoute}}</td>
+    </tr>
+    {{end}}
+  </table>
+</div>

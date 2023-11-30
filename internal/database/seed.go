@@ -19,8 +19,8 @@ type Queue[T any] struct {
 	Tail *Node[T]
 }
 
-func newOrgQueue() *Queue[Organisation] {
-	return &Queue[Organisation]{
+func newOrgQueue() *Queue[SeedOrganisation] {
+	return &Queue[SeedOrganisation]{
 		Len:  0,
 		Head: nil,
 		Tail: nil,
@@ -143,8 +143,8 @@ func SeedDB() {
 	}
 }
 
-func parseJobs(data [][]string) ([]*Job, error) {
-	jobs := []*Job{}
+func parseJobs(data [][]string) ([]*SeedJob, error) {
+	jobs := []*SeedJob{}
 
 	var nextJobId int64 = 1
 	for i, row := range data {
@@ -170,7 +170,7 @@ func parseJobs(data [][]string) ([]*Job, error) {
 			continue
 		}
 
-		jobs = append(jobs, &Job{
+		jobs = append(jobs, &SeedJob{
 			ID:        nextJobId,
 			Type:      jobType,
 			Rating:    jobRating,
@@ -183,7 +183,7 @@ func parseJobs(data [][]string) ([]*Job, error) {
 	return jobs, nil
 }
 
-func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
+func parseOrgs(data [][]string, jobs []*SeedJob) (*Queue[SeedOrganisation], error) {
 	result := newOrgQueue()
 
 	for i, row := range data {
@@ -191,7 +191,7 @@ func parseOrgs(data [][]string, jobs []*Job) (*Queue[Organisation], error) {
 			continue
 		}
 
-		curr := &Organisation{
+		curr := &SeedOrganisation{
 			Name:   row[0],
 			City:   row[1],
 			County: row[2],

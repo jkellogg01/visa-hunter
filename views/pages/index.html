@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UK Visa Sponsors</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.9"
+      integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <div class="min-h-screen">
+      <div class="flex items-start justify-center w-full p-8">
+        <!-- <div id="search-box" class="bg-slate-100 p-4 rounded-lg">
+          Hello this is the search bar!
+        </div> -->
+        {{block "companies" .}}
+        <div class="grid grid-cols-3 gap-4 max-w-7xl" id="results-display">
+          {{range .Data}} {{block "job-card-minimized" .}}
+          <div
+            class="p-4 bg-slate-100 rounded-lg flex flex-row gap-2 justify-between"
+            data-job-id="{{.ID}}"
+          >
+            <div>
+              <h2 class="text-xl font-semibold">{{.Name}}</h2>
+              <!-- Add logic to rewrite this string before sending it to template -->
+              <p>{{.City}}, {{.County}}</p>
+            </div>
+            <div
+              class="p-4 bg-slate-200 rounded-md text-2xl font-bold cursor-pointer hover:bg-slate-300"
+            >
+              {{.Jobs}}
+            </div>
+          </div>
+          {{end}} {{else}}
+          <p class="p-4 bg-slate-100 rounded-lg">
+            No jobs found for these conditions
+          </p>
+          {{end}}
+          <div
+            id="next-page"
+            class="h-1 col-span-3"
+            data-cursor="{{.Cursor}}"
+            hx-trigger="revealed"
+            hx-target="results-display"
+            hx-swap="beforeend"
+          ></div>
+          <!-- This will trigger the infinite scrolling! -->
+        </div>
+        {{end}}
+      </div>
+      <footer class="w-full text-center bg-slate-100 p-4">
+        <!-- footer stuff idk. I'm not into footer stuff -->
+        Made by Joshua Kellogg
+      </footer>
+    </div>
+  </body>
+</html>
