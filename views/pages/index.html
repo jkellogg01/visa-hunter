@@ -13,10 +13,30 @@
   </head>
   <body>
     <div class="min-h-screen">
-      <div class="flex items-start justify-center w-full p-8">
-        <!-- <div id="search-box" class="bg-slate-100 p-4 rounded-lg">
-          Hello this is the search bar!
-        </div> -->
+      <div class="flex flex-col items-center justify-start w-full gap-4 p-8">
+        <search
+          id="search-box"
+          class="bg-slate-100 p-4 rounded-lg max-w-7xl w-full flex flex-row h-24"
+        >
+          <select
+            name="param"
+            id="search-by"
+            class="p-2 rounded-l-md h-full bg-blue-400 hover:bg-blue-500"
+          >
+            <option value="" disabled selected hidden>Search By...</option>
+            <option value="city">City</option>
+            <option value="jobType">Job Type</option>
+            <option value="jobRating">Job Rating</option>
+            <option value="jobVisaRoute">Visa Route</option>
+          </select>
+          <input type="text" class="p-2 w-auto flex-grow h-full" />
+          <button
+            type="submit"
+            class="rounded-r-md h-full p-2 bg-blue-400 hover:bg-blue-500"
+          >
+            Search
+          </button>
+        </search>
 
         <div class="grid grid-cols-3 gap-4 max-w-7xl" id="results-display">
           {{block "companies" .}} {{range .Data}} {{block
