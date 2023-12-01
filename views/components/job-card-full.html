@@ -1,6 +1,8 @@
 <div
   class="p-4 bg-slate-100 rounded-lg flex flex-col gap-2"
-  data-job-id="{{.ID}}"
+  id="org-{{.ID}}"
+  hx-get="/minimize?id={{.ID}}"
+  hx-swap="outerHTML"
 >
   <div>
     <h2 class="text-xl font-semibold">{{.Name}}</h2>

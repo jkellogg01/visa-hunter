@@ -19,10 +19,11 @@
         </div> -->
 
         <div class="grid grid-cols-3 gap-4 max-w-7xl" id="results-display">
-          {{block "companies" .}} {{range .Data}}
+          {{block "companies" .}} {{range .Data}} {{block
+          "job-card-minimized".}}
           <div
             class="p-4 bg-slate-100 rounded-lg flex flex-row gap-2 justify-between"
-            id="job-{{.ID}}"
+            id="org-{{.ID}}"
           >
             <div>
               <h2 class="text-xl font-semibold">{{.Name}}</h2>
@@ -32,13 +33,13 @@
             <div
               class="p-4 bg-slate-200 rounded-md text-2xl font-bold cursor-pointer hover:bg-slate-300"
               hx-get="/organisation?id={{.ID}}"
-              hx-target="#job-{{.ID}}"
+              hx-target="#org-{{.ID}}"
               hx-swap="outerHTML"
             >
               {{.Jobs}}
             </div>
           </div>
-          {{else}}
+          {{end}} {{else}}
           <p class="p-4 bg-slate-100 rounded-lg">
             No jobs found for these conditions
           </p>

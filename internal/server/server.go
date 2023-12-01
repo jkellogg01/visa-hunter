@@ -33,6 +33,8 @@ func Start(port string) error {
 
 	http.HandleFunc("/organisation", handleOrgDetail)
 
+	http.HandleFunc("/minimize", handleOrgMinimize)
+
 	http.HandleFunc("/seed", handleSeed)
 
 	return http.ListenAndServe(port, nil)
@@ -190,6 +192,8 @@ func handleIndexPage(w http.ResponseWriter, r *http.Request) {
 // }
 
 func handleOrgDetail(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.Method, r.URL)
+
 	db, err := database.ConnectDB()
 	if err != nil {
 		log.Fatal("Failed to connect to db: ", err)
@@ -274,6 +278,57 @@ func handleOrgDetail(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	tmpls.ExecuteTemplate(w, "job-card-full.html", detail)
+}
+
+func handleOrgMinimize(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.Method, r.URL)
+
+	db, err := database.ConnectDB()
+	if err != nil {
+		log.Fatal("Failed to connect to db: ", err)
+	}
+	defer db.Close()
+
+	var minimized struct {
+		ID     int64
+		Name   string
+		City   string
+		County string
+		Jobs   int
+	}
+	queryID := r.URL.Query().Get("id")
+	orgID, err := strconv.Atoi(queryID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row := db.QueryRow(`
+	SELECT
+		organisation.name,
+		organisation.city,
+		organisation.county,
+		(
+			SELECT
+				COUNT(*)
+			FROM
+				organisation_job
+			WHERE
+				organisation_job.organisation_id = organisation.id) AS jobs
+		FROM
+			organisation
+		WHERE
+			organisation.id = ?
+		GROUP BY
+			organisation.id
+		LIMIT 48;
+	`, orgID)
+	row.Scan(&minimized.Name, &minimized.City, &minimized.County, &minimized.Jobs)
+	minimized.ID = int64(orgID)
+
+	tmpls, err := template.ParseGlob("./views/**/*.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmpls.ExecuteTemplate(w, "job-card-minimized", minimized)
 }
 
 func handleSeed(w http.ResponseWriter, r *http.Request) {
